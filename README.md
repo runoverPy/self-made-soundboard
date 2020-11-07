@@ -12,3 +12,5 @@ The code should be run on a raspberry pi. It should be connected to the computer
 Input is given via a keyboard attached to the pi. GPIO integration is coming within the next 100 years I promise.
 
 ## Goals:
+
+To create a simple, cheap option to easily record and play soundbites and to not be bored for a while. 
