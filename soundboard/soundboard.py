@@ -12,8 +12,6 @@ import sys
 import numpy  # Make sure NumPy is loaded before it is used in the callback
 assert numpy
 from threading import Thread
-from button import create_button as cb, Button
-
 
 
 class Delayer(Thread):
@@ -25,7 +23,128 @@ class Delayer(Thread):
             if(keyboard.is_pressed("esc")):
                 break
 
-class Soundboard(Button):
+
+
+def int_or_str(text):
+    """Helper function for argument parsing."""
+    try:
+        return int(text)
+    except ValueError:
+        return text
+
+class Audio():
+    def __init__(self, filename, record_key):
+        self.filename = filename
+        self.fs = 44100  # Sample rate
+        self.record_key = record_key
+
+        
+    def play_audio(self):
+        self.data, self.fs = sf.read(self.filename, dtype='float32')
+        sd.play(self.data, self.fs)
+        self.status = sd.wait()
+
+    def record_audio(self):
+        print("starting new recording")
+
+        self.parser = argparse.ArgumentParser(add_help=False)
+        self.parser.add_argument('-l', '--list-devices', action='store_true', help='show list of audio devices and exit')
+        self.args, remaining = self.parser.parse_known_args()
+        if self.args.list_devices:
+            print(sd.query_devices())
+            self.parser.exit(0)
+        self.parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter, parents=[self.parser])
+        self.parser.add_argument('filename', nargs='?', metavar='FILENAME', help='audio file to store recording to')
+        self.parser.add_argument('-d', '--device', type=int_or_str, help='input device (numeric ID or substring)')
+        self.parser.add_argument('-r', '--samplerate', type=int, help='sampling rate')
+        self.parser.add_argument('-c', '--channels', type=int, default=1, help='number of input channels')
+        self.parser.add_argument('-t', '--subtype', type=str, help='sound file subtype (e.g. "PCM_24")')
+        self.args = self.parser.parse_args(remaining)
+
+        self.q = queue.Queue()
+
+
+        def callback(indata, frames, time, status):
+            """This is called (from a separate thread) for each audio block."""
+            if status:
+                print(status, file=sys.stderr)
+            self.q.put(indata.copy())
+
+
+        if self.args.samplerate is None:
+            device_info = sd.query_devices(self.args.device, 'input')
+            # soundfile expects an int, sounddevice provides a float:
+            self.args.samplerate = int(device_info['default_samplerate'])
+        if self.args.filename is None:
+            self.args.filename = self.filename
+
+        # Make sure the file is opened before recording anything:
+        with sf.SoundFile(self.args.filename, mode='x', samplerate=self.args.samplerate,
+                            channels=self.args.channels, subtype=self.args.subtype) as file:
+            with sd.InputStream(samplerate=self.args.samplerate, device=self.args.device,
+                                channels=self.args.channels, callback=callback):
+                while True:
+                    file.write(self.q.get())
+                    if(not keyboard.is_pressed("`")):
+                        break             
+        
+        print("recording finished")
+
+
+
+class Button(Audio):
+    def __init__(self, filename, recording_key, trigger_key = ""):
+        self.trigger_key = trigger_key
+        self.recording_key = recording_key
+        Audio.__init__(self, filename, self.recording_key)
+        if self.trigger_key == "":
+            self.record() 
+        self.set_key()
+
+    def check_play(self):
+        if keyboard.is_pressed(self.trigger_key):
+            self.play_audio
+
+    def record(self):
+        self.record_audio()
+        time.sleep(0.5)
+        print("awaiting button designation")
+        
+        def return_key():    
+            def callback(e):
+                nonlocal return_value
+                return_value = e
+            return_value = ""
+            keyboard.hook(callback=callback)
+            while return_value == "":
+                time.sleep(0.05)
+            return re.match(r"(\S+\()(\S)((\s|\S)+)", str(return_value)).group(2)
+        self.trigger_key = return_key()
+        print("key input (", self.trigger_key, ") recieved. compiling button")
+        self.file = open("soundboard/sound_masterfile.txt", "r+")
+        self.file.write(str(self.filename + " " + self.trigger_key))
+        self.file.close()
+
+    def set_key(self):
+        def callback():
+            self.play_audio()
+        keyboard.add_hotkey(self.trigger_key, callback)
+
+
+def create_filename(length):
+    result = ""
+    for i in range(length -4):
+        result += str(random.randint(0, 9))
+    return result + ".wav"
+
+def create_button(target):
+    keyboard.wait("`")    
+    print("button creation in progress")
+    target.append(Button(create_filename(9), "`"))
+
+
+
+class Soundboard():
     def __init__(self):
         self.recording_key = "`"
         self.used_filenames = []
@@ -56,11 +175,9 @@ class Soundboard(Button):
         return self.result + ".wav"
 
     def create_button(self):
-        cb()
+        create_button(self.all_buttons)
 
-    def continuous_parsing(self):
-        for button in self.all_buttons:
-            button.check_play()
+
 
 soundboard = Soundboard()
 keyboard.add_hotkey(soundboard.recording_key, soundboard.create_button)
