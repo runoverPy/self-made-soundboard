@@ -153,6 +153,10 @@ class Soundboard():
         print("restoring previous buttons")
         self.restore_buttons()
 
+    def clear_file(self):
+        self.newfile = open("soundboard/sound_masterfile.txt", "w")
+        self.newfile.close()
+
     def restore_buttons(self):
         try:
             self.savefile = open("soundboard/sound_masterfile.txt", "r+")
@@ -180,7 +184,8 @@ class Soundboard():
 
 
 soundboard = Soundboard()
-keyboard.add_hotkey(soundboard.recording_key, soundboard.create_button)
 while True:
     if keyboard.is_pressed("esc"):
         break
+    elif keyboard.is_pressed("`"):
+        soundboard.create_button()
