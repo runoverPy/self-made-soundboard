@@ -12,7 +12,7 @@ import sys
 import numpy  # Make sure NumPy is loaded before it is used in the callback
 assert numpy
 from threading import Thread
-
+from playsound import playsound 
 
 class Delayer(Thread):
     def __init__(self):
@@ -33,16 +33,16 @@ def int_or_str(text):
         return text
 
 class Audio():
-    def __init__(self, filename, record_key):
+    def __init__(self, filename, path, record_key):
         self.filename = filename
         self.fs = 44100  # Sample rate
         self.record_key = record_key
+        self.path = path
 
         
     def play_audio(self):
-        self.data, self.fs = sf.read(self.filename, dtype='float32')
-        sd.play(self.data, self.fs)
-        self.status = sd.wait()
+        playsound(self.path + self.filename)
+
 
     def record_audio(self):
         print("starting new recording")
@@ -93,10 +93,11 @@ class Audio():
 
 
 class Button(Audio):
-    def __init__(self, filename, recording_key, trigger_key = ""):
+    def __init__(self, filename, path, recording_key, trigger_key = ""):
         self.trigger_key = trigger_key
         self.recording_key = recording_key
-        Audio.__init__(self, filename, self.recording_key)
+        self.path = path
+        Audio.__init__(self, filename, path, self.recording_key)
         if self.trigger_key == "":
             self.record() 
         self.set_key()
@@ -137,16 +138,12 @@ def create_filename(length):
         result += str(random.randint(0, 9))
     return result + ".wav"
 
-def create_button(target):
-    keyboard.wait("`")    
-    print("button creation in progress")
-    target.append(Button(create_filename(9), "`"))
-
 
 
 class Soundboard():
     def __init__(self):
         self.recording_key = "`"
+        self.path = ""
         self.used_filenames = []
         self.filename_length = 9
         self.all_buttons = []
@@ -164,7 +161,7 @@ class Soundboard():
                 try:
                     self.recalled_filename = re.match(r"(\S+\.wav)(\s+)(\S+)", self.line) 
                     self.used_filenames.append(self.recalled_filename.group(1))
-                    self.all_buttons.append(Button(self.recalled_filename.group(1), self.recording_key, self.recalled_filename.group(3)))
+                    self.all_buttons.append(Button(self.recalled_filename.group(1), self.path, self.recording_key, self.recalled_filename.group(3)))
                 except AttributeError:
                     print("error, contents of line improper:", self.line)
         except FileNotFoundError:
@@ -179,7 +176,9 @@ class Soundboard():
         return self.result + ".wav"
 
     def create_button(self):
-        create_button(self.all_buttons)
+        keyboard.wait("`")    
+        print("button creation in progress")
+        self.all_buttons.append(Button(create_filename(9), "`", self.recording_key))
 
 
 
