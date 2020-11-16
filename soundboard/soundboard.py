@@ -24,7 +24,6 @@ class Delayer(Thread):
                 break
 
 
-
 def int_or_str(text):
     """Helper function for argument parsing."""
     try:
@@ -41,7 +40,7 @@ class Audio():
 
         
     def play_audio(self):
-        playsound(self.path + self.filename)
+        playsound(self.filename)
 
 
     def record_audio(self):
@@ -102,9 +101,6 @@ class Button(Audio):
             self.record() 
         self.set_key()
 
-    def check_play(self):
-        if keyboard.is_pressed(self.trigger_key):
-            self.play_audio
 
     def record(self):
         self.record_audio()
@@ -122,8 +118,8 @@ class Button(Audio):
             return re.match(r"(\S+\()(\S)((\s|\S)+)", str(return_value)).group(2)
         self.trigger_key = return_key()
         print("key input (", self.trigger_key, ") recieved. compiling button")
-        self.file = open("soundboard/sound_masterfile.txt", "r+")
-        self.file.write(str(self.filename + " " + self.trigger_key))
+        self.file = open("soundboard/sound_masterfile.txt", "a")
+        self.file.write(str(self.filename + " " + self.trigger_key + "\n"))
         self.file.close()
 
     def set_key(self):
@@ -147,12 +143,10 @@ class Soundboard():
         self.used_filenames = []
         self.filename_length = 9
         self.all_buttons = []
+        self.button_nums = 0
         print("restoring previous buttons")
         self.restore_buttons()
 
-    def clear_file(self):
-        self.newfile = open("soundboard/sound_masterfile.txt", "w")
-        self.newfile.close()
 
     def restore_buttons(self):
         try:
@@ -162,9 +156,11 @@ class Soundboard():
                     self.recalled_filename = re.match(r"(\S+\.wav)(\s+)(\S+)", self.line) 
                     self.used_filenames.append(self.recalled_filename.group(1))
                     self.all_buttons.append(Button(self.recalled_filename.group(1), self.path, self.recording_key, self.recalled_filename.group(3)))
+                    self.button_nums += 1
                 except AttributeError:
                     print("error, contents of line improper:", self.line)
         except FileNotFoundError:
+            print("FileNotFoundError called, new file created")
             self.newfile = open("soundboard/sound_masterfile.txt", "w")
             self.newfile.close()
         print(len(self.all_buttons), " buttons were restored")
@@ -179,7 +175,7 @@ class Soundboard():
         keyboard.wait("`")    
         print("button creation in progress")
         self.all_buttons.append(Button(create_filename(9), "`", self.recording_key))
-
+        self.button_nums += 1
 
 
 soundboard = Soundboard()
