@@ -12,7 +12,7 @@ import sys
 import numpy  # Make sure NumPy is loaded before it is used in the callback
 assert numpy
 from threading import Thread
-
+from playsound import playsound 
 
 class Delayer(Thread):
     def __init__(self):
@@ -24,7 +24,6 @@ class Delayer(Thread):
                 break
 
 
-
 def int_or_str(text):
     """Helper function for argument parsing."""
     try:
@@ -33,16 +32,16 @@ def int_or_str(text):
         return text
 
 class Audio():
-    def __init__(self, filename, record_key):
+    def __init__(self, filename, path, record_key):
         self.filename = filename
         self.fs = 44100  # Sample rate
         self.record_key = record_key
+        self.path = path
 
         
     def play_audio(self):
-        self.data, self.fs = sf.read(self.filename, dtype='float32')
-        sd.play(self.data, self.fs)
-        self.status = sd.wait()
+        playsound(self.filename)
+
 
     def record_audio(self):
         print("starting new recording")
@@ -93,17 +92,15 @@ class Audio():
 
 
 class Button(Audio):
-    def __init__(self, filename, recording_key, trigger_key = ""):
+    def __init__(self, filename, path, recording_key, trigger_key = ""):
         self.trigger_key = trigger_key
         self.recording_key = recording_key
-        Audio.__init__(self, filename, self.recording_key)
+        self.path = path
+        Audio.__init__(self, filename, path, self.recording_key)
         if self.trigger_key == "":
             self.record() 
         self.set_key()
 
-    def check_play(self):
-        if keyboard.is_pressed(self.trigger_key):
-            self.play_audio
 
     def record(self):
         self.record_audio()
@@ -121,8 +118,8 @@ class Button(Audio):
             return re.match(r"(\S+\()(\S)((\s|\S)+)", str(return_value)).group(2)
         self.trigger_key = return_key()
         print("key input (", self.trigger_key, ") recieved. compiling button")
-        self.file = open("soundboard/sound_masterfile.txt", "r+")
-        self.file.write(str(self.filename + " " + self.trigger_key))
+        self.file = open("soundboard/sound_masterfile.txt", "a")
+        self.file.write(str(self.filename + " " + self.trigger_key + "\n"))
         self.file.close()
 
     def set_key(self):
@@ -137,25 +134,19 @@ def create_filename(length):
         result += str(random.randint(0, 9))
     return result + ".wav"
 
-def create_button(target):
-    keyboard.wait("`")    
-    print("button creation in progress")
-    target.append(Button(create_filename(9), "`"))
-
 
 
 class Soundboard():
     def __init__(self):
         self.recording_key = "`"
+        self.path = ""
         self.used_filenames = []
         self.filename_length = 9
         self.all_buttons = []
+        self.button_nums = 0
         print("restoring previous buttons")
         self.restore_buttons()
 
-    def clear_file(self):
-        self.newfile = open("soundboard/sound_masterfile.txt", "w")
-        self.newfile.close()
 
     def restore_buttons(self):
         try:
@@ -164,10 +155,12 @@ class Soundboard():
                 try:
                     self.recalled_filename = re.match(r"(\S+\.wav)(\s+)(\S+)", self.line) 
                     self.used_filenames.append(self.recalled_filename.group(1))
-                    self.all_buttons.append(Button(self.recalled_filename.group(1), self.recording_key, self.recalled_filename.group(3)))
+                    self.all_buttons.append(Button(self.recalled_filename.group(1), self.path, self.recording_key, self.recalled_filename.group(3)))
+                    self.button_nums += 1
                 except AttributeError:
                     print("error, contents of line improper:", self.line)
         except FileNotFoundError:
+            print("FileNotFoundError called, new file created")
             self.newfile = open("soundboard/sound_masterfile.txt", "w")
             self.newfile.close()
         print(len(self.all_buttons), " buttons were restored")
@@ -179,8 +172,10 @@ class Soundboard():
         return self.result + ".wav"
 
     def create_button(self):
-        create_button(self.all_buttons)
-
+        keyboard.wait("`")    
+        print("button creation in progress")
+        self.all_buttons.append(Button(create_filename(9), "`", self.recording_key))
+        self.button_nums += 1
 
 
 soundboard = Soundboard()
