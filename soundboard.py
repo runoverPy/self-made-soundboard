@@ -2,17 +2,13 @@ import time
 import keyboard
 import sounddevice as sd
 import soundfile as sf
-from scipy.io.wavfile import write
 import random
 import re
 import argparse
-import tempfile
 import queue
 import sys
-import numpy  # Make sure NumPy is loaded before it is used in the callback
-assert numpy
 from threading import Thread
-from playsound import playsound 
+from playsound import playsound
 
 class Delayer(Thread):
     def __init__(self):
