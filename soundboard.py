@@ -10,8 +10,8 @@ from playsound import playsound
 
 def create_filename():
     time = datetime.now()
-    name = f"{str(time.year)[2:]}-{time.month}-{time.day}:{time.hour}-{time.minute}-{time.second}"
-    return "soundboard/" + str(hex(hash(name)))[2:] + ".wav"
+    name = f"{time.year}{time.month}{time.day}{time.hour}{time.minute}{time.second}"
+    return "soundboard/" + str(hash(name)) + ".wav"
 
 class Button:
     def __init__(self, filename, trigger_key):
