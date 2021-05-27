@@ -1,3 +1,4 @@
 keyboard
-sounddevicegyt
+sounddevice
 soundfile
+playsound
